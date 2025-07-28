@@ -8,6 +8,7 @@ This project includes a devcontainer configuration that provides a complete Lara
 - **Node.js 20** for frontend development with Vite
 - **SQLite** database support  
 - **Composer** for PHP dependency management
+- **Chromium browser** for Lighthouse performance audits
 - **Git** and GitHub CLI
 - **VS Code extensions** for Laravel/PHP development
 
@@ -44,6 +45,9 @@ php artisan test
 php artisan migrate
 
 # Access Filament admin panel at http://localhost:8000/admin
+
+# Run Lighthouse performance audits using spatie/lighthouse-php
+# The Chromium browser is available for headless auditing
 ```
 
 ## Ports
@@ -68,6 +72,7 @@ If you encounter any issues:
 
 The devcontainer setup script automatically:
 - Installs all PHP and Node.js dependencies
+- Installs Chromium browser for Lighthouse audits
 - Creates the `.env` file from `.env.example`
 - Generates the Laravel application key
 - Creates the SQLite database

@@ -22,6 +22,10 @@ sudo apt-get install -y -qq \
     php8.3-redis \
     sqlite3
 
+# Install Chromium browser for Lighthouse audits
+echo "🌐 Installing Chromium browser for Lighthouse PHP..."
+sudo apt-get install -y -qq chromium-browser
+
 # Install Composer dependencies
 echo "🎼 Installing Composer dependencies..."
 composer install --no-interaction --optimize-autoloader
@@ -66,4 +70,5 @@ echo "  - Start dev server: php artisan serve"
 echo "  - Start Vite dev server: npm run dev" 
 echo "  - Run tests: php artisan test"
 echo "  - Access Filament admin: /admin"
+echo "  - Run Lighthouse audits: Available via spatie/lighthouse-php"
 echo ""

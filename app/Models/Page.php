@@ -42,4 +42,19 @@ class Page extends Model
     {
         return $this->lighthouse['seo'] ?? null;
     }
+
+    public function getAccessibilityScoreAttribute(): ?int
+    {
+        return $this->lighthouse['accessibility'] ?? null;
+    }
+
+    public function getBestPracticesScoreAttribute(): ?int
+    {
+        return $this->lighthouse['best-practices'] ?? null;
+    }
+
+    public function getPwaScoreAttribute(): ?int
+    {
+        return $this->lighthouse['pwa'] ?? null;
+    }
 }

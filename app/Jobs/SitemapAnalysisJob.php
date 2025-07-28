@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\LighthouseAnalysisJob;
 use App\Models\Page;
 use App\Models\Website;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,36 +27,29 @@ class SitemapAnalysisJob implements ShouldQueue
 
         try {
             $allUrls = [];
-            $sitemapData = [
-                'total_pages' => 0,
-                'categories' => [],
-                'last_analyzed' => now()->toISOString(),
-            ];
 
             foreach ($this->sitemapUrls as $sitemapUrl) {
                 $urls = $this->parseSitemap($sitemapUrl);
                 $allUrls = array_merge($allUrls, $urls);
             }
 
-            // Remove duplicates
             $allUrls = array_unique($allUrls);
             
-            // Categorize URLs
             $categorizedUrls = $this->categorizeUrls($allUrls);
             
-            // Update sitemap data
-            $sitemapData['total_pages'] = count($allUrls);
-            $sitemapData['categories'] = $categorizedUrls;
-            
+            $sitemapData = [
+                'total_pages' => count($allUrls),
+                'categories' => $categorizedUrls,
+                'last_analyzed' => now()->toISOString(),
+            ];
+
             $this->website->update([
                 'sitemap_data' => $sitemapData,
                 'analysis_status' => 'sitemap_analyzed'
             ]);
 
-            // Select random pages for detailed analysis (max 25)
             $selectedUrls = $this->selectRandomUrls($allUrls, 25);
             
-            // Create Page records
             foreach ($selectedUrls as $url) {
                 $category = $this->determineUrlCategory($url);
                 
@@ -65,17 +59,9 @@ class SitemapAnalysisJob implements ShouldQueue
                 );
             }
 
-            // Dispatch lighthouse analysis for selected pages
             if (!empty($selectedUrls)) {
                 Log::info("Dispatching Lighthouse analysis for " . count($selectedUrls) . " pages");
                 LighthouseAnalysisJob::dispatch($this->website, $selectedUrls)->delay(now()->addSeconds(10));
-            }
-
-            // Dispatch SEO analysis for sample pages from each category
-            $seoUrls = $this->selectSeoSampleUrls($categorizedUrls);
-            if (!empty($seoUrls)) {
-                Log::info("Dispatching SEO analysis for " . count($seoUrls) . " sample pages");
-                SeoAnalysisJob::dispatch($this->website, $seoUrls)->delay(now()->addSeconds(15));
             }
 
             Log::info("Sitemap analysis completed for: {$this->website->url}");
@@ -110,7 +96,6 @@ class SitemapAnalysisJob implements ShouldQueue
                 return $urls;
             }
 
-            // Handle sitemap index
             if (isset($xml->sitemap)) {
                 foreach ($xml->sitemap as $sitemap) {
                     $subSitemapUrl = (string) $sitemap->loc;
@@ -119,7 +104,6 @@ class SitemapAnalysisJob implements ShouldQueue
                 }
             }
             
-            // Handle regular sitemap
             if (isset($xml->url)) {
                 foreach ($xml->url as $url) {
                     $urls[] = (string) $url->loc;
@@ -139,55 +123,57 @@ class SitemapAnalysisJob implements ShouldQueue
         
         foreach ($urls as $url) {
             $category = $this->determineUrlCategory($url);
-            
-            if (!isset($categories[$category])) {
-                $categories[$category] = [];
-            }
-            
-            $categories[$category][] = $url;
+            $categories[$category] = ($categories[$category] ?? 0) + 1;
         }
         
-        // Convert to counts
-        $categoryCounts = [];
-        foreach ($categories as $category => $urls) {
-            $categoryCounts[$category] = count($urls);
-        }
-        
-        return $categoryCounts;
+        return $categories;
     }
 
     private function determineUrlCategory(string $url): string
     {
         $path = parse_url($url, PHP_URL_PATH) ?? '';
-        $path = strtolower($path);
+        $path = strtolower(rtrim($path, '/'));
         
-        // Common e-commerce patterns
-        if (preg_match('/\/(products?|items?|shop)\//', $path)) {
+        if (preg_match('/\/(docs|documentation|guide|api)/', $path)) {
+            return 'documentation';
+        }
+        
+        if (preg_match('/\/(products?|items?|shop)/', $path)) {
             return 'product';
         }
         
-        if (preg_match('/\/(collections?|categories?|catalog)\//', $path)) {
+        if (preg_match('/\/(collections?|categories?|catalog)/', $path)) {
             return 'collection';
         }
         
-        if (preg_match('/\/(blogs?|news|articles?)\//', $path)) {
+        if (preg_match('/\/(blogs?|news|articles?|posts?)/', $path)) {
             return 'blog';
         }
         
-        if (preg_match('/\/(pages?|about|contact|privacy|terms)\//', $path)) {
+        if (preg_match('/\/(about|contact|privacy|terms|faq|help|support)/', $path)) {
             return 'page';
         }
         
-        // Check for common patterns
-        if (preg_match('/\/tag\//', $path)) {
+        if (preg_match('/\/(tags?|tagged)/', $path)) {
             return 'tag';
         }
         
-        if (preg_match('/\/search\//', $path)) {
+        if (preg_match('/\/(search|results)/', $path)) {
             return 'search';
         }
         
-        // Default to page if no specific pattern is found
+        if ($path === '' || $path === '/') {
+            return 'homepage';
+        }
+        
+        if (preg_match('/\.(pdf|doc|docx|jpg|jpeg|png|gif|svg)$/i', $path)) {
+            return 'file';
+        }
+        
+        if (preg_match('/\/api\//', $path)) {
+            return 'api';
+        }
+        
         return 'page';
     }
 
@@ -204,39 +190,5 @@ class SitemapAnalysisJob implements ShouldQueue
         }
         
         return array_map(fn($key) => $urls[$key], $keys);
-    }
-
-    private function selectSeoSampleUrls(array $categorizedUrls): array
-    {
-        $sampleUrls = [];
-        
-        // Get up to 5 URLs from each category for SEO analysis
-        foreach ($categorizedUrls as $category => $count) {
-            $categoryUrls = array_filter($this->getAllUrlsForCategory($category), fn($url) => !empty($url));
-            
-            if (empty($categoryUrls)) {
-                continue;
-            }
-            
-            $sampleCount = min(5, count($categoryUrls));
-            $selectedKeys = array_rand($categoryUrls, $sampleCount);
-            
-            if (!is_array($selectedKeys)) {
-                $selectedKeys = [$selectedKeys];
-            }
-            
-            foreach ($selectedKeys as $key) {
-                $sampleUrls[] = $categoryUrls[$key];
-            }
-        }
-        
-        return $sampleUrls;
-    }
-
-    private function getAllUrlsForCategory(string $category): array
-    {
-        // This would need to store URLs by category during processing
-        // For now, return empty array as this is a simplified implementation
-        return [];
     }
 }

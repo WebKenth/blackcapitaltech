@@ -55,6 +55,9 @@
             <!-- Company Section -->
             <livewire:website-analysis.company-section :website="$website" />
             
+            <!-- Sitemap Section -->
+            <livewire:sitemap-section :website="$website" />
+            
             <!-- SEO Section -->
             <livewire:website-analysis.seo-section :website="$website" />
             

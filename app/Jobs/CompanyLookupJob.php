@@ -20,7 +20,7 @@ class CompanyLookupJob implements ShouldQueue
     public function handle(): void
     {
         Log::info("Starting CVR lookup for: {$this->cvrNumber}");
-        
+        return;
         $this->website->update(['analysis_status' => 'analyzing_company']);
 
         try {

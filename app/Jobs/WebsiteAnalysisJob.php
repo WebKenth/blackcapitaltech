@@ -55,8 +55,13 @@ class WebsiteAnalysisJob implements ShouldQueue
             }
 
             if (!empty($sitemapUrls)) {
-                Log::info("Found sitemaps, dispatching sitemap analysis");
+                Log::info("Found sitemaps, dispatching sitemap analysis", [
+                    'sitemap_urls' => $sitemapUrls,
+                    'count' => count($sitemapUrls)
+                ]);
                 SitemapAnalysisJob::dispatch($this->website, $sitemapUrls)->delay(now()->addSeconds(5));
+            } else {
+                Log::warning("No sitemaps found for website: {$this->website->url}");
             }
 
             // 5. Dispatch SEO analysis for main page

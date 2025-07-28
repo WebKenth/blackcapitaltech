@@ -6,9 +6,8 @@ use App\Models\Page;
 use App\Models\Website;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Process;
+use Spatie\Lighthouse\Lighthouse;
 
 class LighthouseAnalysisJob implements ShouldQueue
 {
@@ -77,157 +76,26 @@ class LighthouseAnalysisJob implements ShouldQueue
     private function runLighthouseAnalysis(string $url): ?array
     {
         try {
-            // Option 1: Use Google PageSpeed Insights API (free with quota)
-            $data = $this->usePageSpeedInsights($url);
+            Log::info("Running Lighthouse analysis for: {$url}");
             
-            if ($data) {
-                return $data;
-            }
+            $result = Lighthouse::url($url)->run();
             
-            // Option 2: Use a local Lighthouse installation (if available)
-            return $this->useLocalLighthouse($url);
+            $scores = $result->scores();
+            
+            return [
+                'performance' => $scores['performance'] ?? 0,
+                'accessibility' => $scores['accessibility'] ?? 0,
+                'best-practices' => $scores['best-practices'] ?? 0,
+                'seo' => $scores['seo'] ?? 0,
+                'pwa' => $scores['pwa'] ?? 0,
+                'source' => 'spatie_lighthouse',
+                'analyzed_at' => now()->toISOString(),
+            ];
             
         } catch (\Exception $e) {
             Log::error("Lighthouse analysis failed for {$url}: {$e->getMessage()}");
             return null;
         }
-    }
-
-    private function usePageSpeedInsights(string $url): ?array
-    {
-        try {
-            // Using Google PageSpeed Insights API
-            $apiKey = config('services.google.pagespeed_api_key'); // Add this to your config
-            
-            if (!$apiKey) {
-                Log::warning("No Google PageSpeed API key configured");
-                return null;
-            }
-
-            $response = Http::timeout(60)->get('https://www.googleapis.com/pagespeedonline/v5/runPagespeed', [
-                'url' => $url,
-                'key' => $apiKey,
-                'category' => ['PERFORMANCE', 'ACCESSIBILITY', 'BEST_PRACTICES', 'SEO'],
-                'strategy' => 'DESKTOP'
-            ]);
-
-            if (!$response->successful()) {
-                Log::warning("PageSpeed API returned status: {$response->status()}");
-                return null;
-            }
-
-            $data = $response->json();
-            
-            if (isset($data['error'])) {
-                Log::warning("PageSpeed API error: " . json_encode($data['error']));
-                return null;
-            }
-
-            return $this->parsePageSpeedData($data);
-
-        } catch (\Exception $e) {
-            Log::error("PageSpeed Insights API error: {$e->getMessage()}");
-            return null;
-        }
-    }
-
-    private function useLocalLighthouse(string $url): ?array
-    {
-        try {
-            // Check if Lighthouse CLI is available
-            $result = Process::run('lighthouse --version');
-            
-            if (!$result->successful()) {
-                Log::info("Lighthouse CLI not available, skipping local analysis");
-                return null;
-            }
-
-            // Run Lighthouse analysis
-            $tempFile = tempnam(sys_get_temp_dir(), 'lighthouse_') . '.json';
-            
-            $command = "lighthouse {$url} --output=json --output-path={$tempFile} --chrome-flags=\"--headless --no-sandbox\" --quiet";
-            
-            $result = Process::timeout(120)->run($command);
-            
-            if (!$result->successful()) {
-                Log::warning("Lighthouse CLI failed: {$result->errorOutput()}");
-                return null;
-            }
-
-            if (!file_exists($tempFile)) {
-                Log::warning("Lighthouse output file not found");
-                return null;
-            }
-
-            $lighthouseData = json_decode(file_get_contents($tempFile), true);
-            unlink($tempFile);
-
-            return $this->parseLighthouseData($lighthouseData);
-
-        } catch (\Exception $e) {
-            Log::error("Local Lighthouse error: {$e->getMessage()}");
-            return null;
-        }
-    }
-
-    private function parsePageSpeedData(array $data): array
-    {
-        $categories = $data['lighthouseResult']['categories'] ?? [];
-        
-        return [
-            'performance' => round(($categories['performance']['score'] ?? 0) * 100),
-            'accessibility' => round(($categories['accessibility']['score'] ?? 0) * 100),
-            'best-practices' => round(($categories['best-practices']['score'] ?? 0) * 100),
-            'seo' => round(($categories['seo']['score'] ?? 0) * 100),
-            'metrics' => $this->extractMetrics($data['lighthouseResult']['audits'] ?? []),
-            'source' => 'pagespeed_insights',
-            'analyzed_at' => now()->toISOString(),
-        ];
-    }
-
-    private function parseLighthouseData(array $data): array
-    {
-        $categories = $data['categories'] ?? [];
-        
-        return [
-            'performance' => round(($categories['performance']['score'] ?? 0) * 100),
-            'accessibility' => round(($categories['accessibility']['score'] ?? 0) * 100),
-            'best-practices' => round(($categories['best-practices']['score'] ?? 0) * 100),
-            'seo' => round(($categories['seo']['score'] ?? 0) * 100),
-            'metrics' => $this->extractMetrics($data['audits'] ?? []),
-            'source' => 'lighthouse_cli',
-            'analyzed_at' => now()->toISOString(),
-        ];
-    }
-
-    private function extractMetrics(array $audits): array
-    {
-        $metrics = [];
-        
-        $metricKeys = [
-            'first-contentful-paint' => 'first-contentful-paint',
-            'largest-contentful-paint' => 'largest-contentful-paint',
-            'cumulative-layout-shift' => 'cumulative-layout-shift',
-            'speed-index' => 'speed-index',
-            'total-blocking-time' => 'total-blocking-time',
-        ];
-
-        foreach ($metricKeys as $key => $displayKey) {
-            if (isset($audits[$key]['displayValue'])) {
-                $metrics[$displayKey] = $audits[$key]['displayValue'];
-            } elseif (isset($audits[$key]['numericValue'])) {
-                $value = $audits[$key]['numericValue'];
-                
-                // Convert milliseconds to seconds for time-based metrics
-                if (in_array($key, ['first-contentful-paint', 'largest-contentful-paint', 'speed-index', 'total-blocking-time'])) {
-                    $metrics[$displayKey] = round($value / 1000, 2);
-                } else {
-                    $metrics[$displayKey] = round($value, 3);
-                }
-            }
-        }
-
-        return $metrics;
     }
 
     private function calculateAverageScores(array $allScores): array
@@ -237,6 +105,7 @@ class LighthouseAnalysisJob implements ShouldQueue
             'accessibility' => 0,
             'best-practices' => 0,
             'seo' => 0,
+            'pwa' => 0,
         ];
         
         $count = count($allScores);
@@ -252,6 +121,7 @@ class LighthouseAnalysisJob implements ShouldQueue
             'accessibility' => round($totals['accessibility'] / $count),
             'best-practices' => round($totals['best-practices'] / $count),
             'seo' => round($totals['seo'] / $count),
+            'pwa' => round($totals['pwa'] / $count),
             'pages_analyzed' => $count,
             'last_analyzed' => now()->toISOString(),
         ];

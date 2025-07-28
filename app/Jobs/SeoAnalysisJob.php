@@ -21,7 +21,7 @@ class SeoAnalysisJob implements ShouldQueue
     public function handle(): void
     {
         Log::info("Starting SEO analysis for: {$this->website->url}");
-        
+        return;
         $this->website->update(['analysis_status' => 'analyzing_seo']);
 
         try {

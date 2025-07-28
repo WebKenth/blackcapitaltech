@@ -36,7 +36,7 @@ Once the container is running, you can use these commands:
 php artisan serve
 
 # Start the Vite development server for frontend assets (port 5173)
-npm run dev
+yarn dev
 
 # Run tests
 php artisan test

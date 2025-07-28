@@ -32,7 +32,9 @@
         "bradlc.vscode-tailwindcss",
         "ms-vscode.vscode-json",
         "esbenp.prettier-vscode",
-        "ms-vscode.theme-tomorrowkit"
+        "ms-vscode.theme-tomorrowkit",
+        "onecentlin.laravel-blade",
+        "ryangjchandler.blade-directives"
       ],
       "settings": {
         "php.suggest.basic": false,
@@ -40,7 +42,13 @@
         "intelephense.files.maxSize": 5000000,
         "files.associations": {
           "*.blade.php": "blade"
-        }
+        },
+        "php.debug.executablePath": "/usr/local/bin/php",
+        "php.executablePath": "/usr/local/bin/php",
+        "emmet.includeLanguages": {
+          "blade": "html"
+        },
+        "blade.format.enable": true
       }
     }
   },

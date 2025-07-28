@@ -32,7 +32,7 @@ composer install --no-interaction --optimize-autoloader
 
 # Install Node.js dependencies  
 echo "📦 Installing Node.js dependencies..."
-npm install
+yarn install
 
 # Create .env file if it doesn't exist
 if [ ! -f .env ]; then
@@ -67,7 +67,7 @@ echo "✅ Laravel development environment setup complete!"
 echo ""
 echo "🎯 Quick commands:"
 echo "  - Start dev server: php artisan serve"
-echo "  - Start Vite dev server: npm run dev" 
+echo "  - Start Vite dev server: yarn dev" 
 echo "  - Run tests: php artisan test"
 echo "  - Access Filament admin: /admin"
 echo "  - Run Lighthouse audits: Available via spatie/lighthouse-php"

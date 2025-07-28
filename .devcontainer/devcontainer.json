@@ -1,0 +1,50 @@
+{
+  "name": "Black Capital Technology - Laravel Development",
+  "image": "mcr.microsoft.com/devcontainers/php:1-8.3-bullseye",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGypDependencies": true,
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "forwardPorts": [8000, 5173],
+  "portsAttributes": {
+    "8000": {
+      "label": "Laravel Dev Server",
+      "onAutoForward": "notify"
+    },
+    "5173": {
+      "label": "Vite Dev Server", 
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": ".devcontainer/setup.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-json",
+        "esbenp.prettier-vscode",
+        "ms-vscode.theme-tomorrowkit"
+      ],
+      "settings": {
+        "php.suggest.basic": false,
+        "php.validate.enable": false,
+        "intelephense.files.maxSize": 5000000,
+        "files.associations": {
+          "*.blade.php": "blade"
+        }
+      }
+    }
+  },
+
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/blackcapitaltech"
+}

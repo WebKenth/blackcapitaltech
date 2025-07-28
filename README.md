@@ -1,5 +1,13 @@
 # Black Capital Technology - Website Analysis Platform
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/WebKenth/blackcapitaltech?quickstart=1)
+
+## 🚀 Quick Start
+
+This project includes a devcontainer for easy development in GitHub Codespaces or VS Code Remote Containers. Click the badge above to start coding immediately!
+
+For local development setup, see the [devcontainer documentation](.devcontainer/README.md).
+
 ## Project Vision
 
 We are transforming Black Capital Technology's business model from traditional AI consulting to a scalable lead generation platform through intelligent website analysis. This project reimagines how we capture and convert prospects by providing immediate value through comprehensive website audits.

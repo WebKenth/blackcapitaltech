@@ -10,17 +10,32 @@ echo "🚀 Setting up Laravel development environment..."
 # Install additional PHP extensions that Laravel might need
 echo "📦 Installing additional PHP extensions..."
 sudo apt-get update -qq
+
+# Install system dependencies for PHP extensions
 sudo apt-get install -y -qq \
-    php8.3-sqlite3 \
-    php8.3-gd \
-    php8.3-curl \
-    php8.3-zip \
-    php8.3-xml \
-    php8.3-mbstring \
-    php8.3-bcmath \
-    php8.3-intl \
-    php8.3-redis \
+    libicu-dev \
+    libzip-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
     sqlite3
+
+# Install PHP extensions using docker-php-ext-install
+echo "🔧 Creating PHP configuration directory..."
+sudo mkdir -p /usr/local/etc/php/conf.d
+
+echo "🔧 Installing PHP extensions..."
+sudo docker-php-ext-configure gd --with-freetype --with-jpeg
+sudo docker-php-ext-install -j$(nproc) \
+    intl \
+    zip \
+    bcmath \
+    gd
+
+# Disable and remove Xdebug to avoid connection errors and improve performance
+echo "🔧 Disabling Xdebug..."
+sudo rm -f /usr/local/etc/php/conf.d/xdebug.ini
+sudo rm -f /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 # Install Chromium browser for Lighthouse audits
 echo "🌐 Installing Chromium browser for Lighthouse PHP..."
